@@ -11,24 +11,28 @@ import time
 
 # 合并两表的属性，对于主键相同的项，对欠费金额、收入加和
 def attrMerge():
+    """
+    Merge 2 tables
+    For data points with same primary key, add outstanding fees & revenues
+    """
     main_chart = xl.load_workbook(os.path.dirname(__file__) + '/data/raw_data.xlsx', data_only=True)
     main_sheet = main_chart['Sheet1']
     supple_chart = xlrd.open_workbook(os.path.dirname(__file__) + '/data/attr_supplement.xlsx')
     supple_sheet = supple_chart.sheet_by_name('Sheet1')
     print("open 2 files successfully")
 
-    # 取attr_supplement.xlsx中第5列的主键
+    # set primary key
     key_supple = supple_sheet.col_values(5)
 
     i = 2  # 原表
     while i < 8640:
         if main_sheet.cell(row=i, column=28).value != 1:
-            # 找到重复的主键和重复次数
+            # get repetitive keys and number of repetition
             key_dup = main_sheet.cell(row=i, column=26).value
             dup = main_sheet.cell(row=i, column=28).value
             # print(key_dup, ", ", dup)
 
-            # 计算总税后收入、总欠费金额
+            # Calculate outstanding fees & revenues
             """
             total = 0
             j = 1  # 属性表
@@ -46,7 +50,7 @@ def attrMerge():
             main_sheet.cell(row=i, column=30).value = total
             """
 
-            # 计算最大欠费月份
+            # Calculate maximum length of outstanding charges
             max = 0
             j = 1  # 属性表
             while 1:
@@ -91,7 +95,7 @@ def boolMake():
 
 def distributionAnalyze(column):
     s = pd.read_excel(os.path.dirname(__file__) + '/data/raw_data.xlsx', sheet_name='Sheet1', usecols=column)
-    # 画散点图和直方图
+    # scatter plot & histogram
     fig = plt.figure(figsize=(10, 6))
     ax1 = fig.add_subplot(2, 1, 1)  # 创建子图1
     ax1.scatter(s.index, s.values)
@@ -109,7 +113,7 @@ def FeatureSelection():
     chart = xlrd.open_workbook(os.path.dirname(__file__) + '/data/raw_data.xlsx')
     sheet = chart.sheet_by_name('Sheet1')
 
-    # 相关矩阵
+    # correlation maxtrix
     correlation = []
     for i in range(14):
         x = sheet.col_values(7+i)
@@ -120,7 +124,7 @@ def FeatureSelection():
             y = sheet.col_values(j)
             del y[0]
 
-            # 使用spearman系数计算属性间相关性
+            # Calculate correlation between attributes via Spearman coefficient
             s, p = stats.spearmanr(x, y)
             correlation[i].append(s)
 
@@ -146,7 +150,7 @@ def dataNormalize():
     s = pd.read_excel(os.path.dirname(__file__) + '/data/association_data.xlsx', sheet_name='Sheet1', usecols='O')
     s.head()
 
-    # 使用min-max归一化
+    # min-max normalize
     min_max = preprocessing.MinMaxScaler()
 
     result = min_max.fit_transform(s)
@@ -168,13 +172,13 @@ def dateTransform():
 
     i = 0
     while i < 8638:
-        date = sheet.cell(row=i+2, column=8).value  # 读取数据
-        # 将格式为“20210101”的字符串转换为日期
+        date = sheet.cell(row=i+2, column=8).value  # load data
+        # Transfer strings e.g. “20210101” into dates
         date = time.mktime(time.strptime(date, '%Y%m%d'))
-        now = time.time()  # 记录当前时间
+        now = time.time()  # time record
         total_s = now - date
-        total_d = int(total_s/(60*60*24))  # 计算天数
-        sheet.cell(row=i+2, column=8).value = total_d  # 写入数据
+        total_d = int(total_s/(60*60*24))  # count days
+        sheet.cell(row=i+2, column=8).value = total_d  # write data
         i += 1
     chart.save(os.path.dirname(__file__) + '/data/classify_data.xlsx')
 
@@ -191,7 +195,7 @@ def CustomerLevel():
     # result = pd.DataFrame()
     result = []
 
-    # 去除电话号码重复值
+    # drop duplicates for phone number
     raw_data.drop_duplicates(subset='PhoneNumber', keep='first', inplace=True)
     raw_data = raw_data.reset_index(drop=True)
     # raw_data = raw_data.tolist()
@@ -199,15 +203,15 @@ def CustomerLevel():
     for i in range(raw_data.shape[0]):
         # print(i)
         temp = level_data.where(level_data.PhoneNumber == raw_data['PhoneNumber'][i])
-        # 去除空值
+        # drop NA
         temp = temp.dropna()
         temp = temp.reset_index(drop=True)
         m, n = temp.shape
 
-        # 记录号码和重复次数
+        # count repetition
         levels = [raw_data['PhoneNumber'][i], m]
 
-        # 记录星级
+        # record user level
         for j in range(m):
             s = temp['Level'][j]
             levels.extend([s])
@@ -221,23 +225,23 @@ def CustomerLevel():
 
 
 if __name__ == '__main__':
-    # 合并两张表格的属性值
+    # Merge 2 tables
     # attrMerge()
 
-    # 将二元属性统一为布尔值
+    # Boolean attributes cleaning
     # boolMake()
 
-    # 判断属性是否为正态分布
+    # Normal distribution dermination
     # distributionAnalyze('P')
 
-    # 特征选择
+    # Feature selection
     # FeatureSelection()
 
-    # 数据归一化
+    # Data normalization
     # dataNormalize()
 
-    # 将日期转化为时间长度
+    # Transfer dates into count of days
     # dateTransform()
 
-    # 统计客户星级
+    # Custermers' level association
     CustomerLevel()

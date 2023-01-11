@@ -15,10 +15,10 @@ def dataCluster(colomn):
     data = pd.read_excel(os.path.dirname(__file__) + '/data/raw_data.xlsx', sheet_name='Sheet1', usecols=colomn)
     data.head()
     """
-    # 聚类
+    # clustering
     y_pre = KMeans(n_clusters=3, random_state=0).fit_predict(data)
     
-    # 写入Excel
+    # write to Excel
     i = 0
     while i < 8638:
         sheet.cell(row=i+2, column=13).value = y_pre[i]
@@ -28,11 +28,11 @@ def dataCluster(colomn):
     SSE = []
     sil_score = []
     
-    # 计算不同K值对应的轮廓系数和SSE
+    # Silhouette Coefficient and SSE for different K
     for k in range(2, 9):
         model = KMeans(n_clusters=k, random_state=0)
         model.fit_predict(data)
-        sil_score.append(silhouette_score(data, model.labels_))  # 轮廓系数
+        sil_score.append(silhouette_score(data, model.labels_))  # Silhouette Coefficient
         SSE.append(model.inertia_)  # SSE
     
     plt.figure()
@@ -53,12 +53,12 @@ def boolDataCluster():
     chart = xl.load_workbook(os.path.dirname(__file__) + '/data/raw_data.xlsx', data_only=True)
     sheet = chart['Sheet1']
 
-    # 将4bit布尔量转化为十进制数字
+    # Transfer 4-bit Boolean value to decimal
     for i in range(8638):
         temp = sheet.cell(row=i+2, column=3).value * 2 ** 3 + sheet.cell(row=i+2, column=4).value * 2 ** 2 + sheet.cell(row=i+2, column=5).value * 2 + sheet.cell(row=i+2, column=6).value
         sheet.cell(row=i+2, column=7).value = temp
 
-    # 将16个类别转化为4个聚类
+    # Transform 16 categories into 4 clusters
     for i in range(8638):
         temp = sheet.cell(i+2, 7).value
         if 0 <= temp <= 3:
@@ -74,8 +74,8 @@ def boolDataCluster():
 
 
 if __name__ == '__main__':
-    # 连续量聚类
+    # Clustering for continuous attributes
     dataCluster('H:M, Q')
 
-    # 离散量聚类
+    # Clustering for discrete attributes
     # boolDataCluster()

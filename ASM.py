@@ -15,15 +15,15 @@ def dataTransform():
     i = 2
     packages = []
     while i < 8640:
-        # 一个用户办理多个套餐
+        # For one user with multiple plans
         if sheet1.cell(i, 19).value != 1:
-            dup = sheet1.cell(i, 19).value  # 该用户办理的套餐个数
-            temp = [sheet1.cell(i, 1).value, dup]  # 记录用户、套参数
+            dup = sheet1.cell(i, 19).value  # the number of plans
+            temp = [sheet1.cell(i, 1).value, dup]  # user / plan
             j = 0
             while j < dup:
-                temp.append(sheet1.cell(i+j, 2).value)  # 记录套餐类型
+                temp.append(sheet1.cell(i+j, 2).value)  # type of the plan
                 j += 1
-            i += dup  # 跳到下一个用户
+            i += dup  # next user
             packages.append(temp)
         else:
             i += 1
@@ -41,7 +41,7 @@ def setSort():
         for j in range(sheet5.cell(i, 2).value):
             temp.append(sheet5.cell(i, j+3).value)
 
-        # 对无序的集合排序
+        # sort set
         temp.sort()
         for j in range(sheet5.cell(i, 2).value):
             sheet5.cell(i, j+3).value = temp[j]
@@ -54,7 +54,7 @@ def dataDiscrete(column):
     data.head()
 
     """
-    # 等距离散化
+    # Data discretization: binning
     data['RevenueTeam'] = pd.cut(data.TotalRevenue, 20, labels=range(20))  # range = 3w
     data.groupby('RevenueTeam').count()
     data['TotalATeam'] = pd.cut(data.TotalArrearage, 20, labels=range(20))  # range = 24w
@@ -65,7 +65,7 @@ def dataDiscrete(column):
     data.groupby('RegisterTeam').count()
     """
 
-    # 等频离散化
+    # Quantile-based discretization
     data['RevenueTeam'] = pd.qcut(data.TotalRevenue, 10, labels=range(8), duplicates='drop')
     data['TotalATeam'] = pd.qcut(data.TotalArrearage, 10, labels=range(4), duplicates='drop')
     data['MaxATeam'] = pd.qcut(data.MaxArrearageTime, 10, labels=range(4), duplicates='drop')
@@ -92,11 +92,11 @@ def dataRename():
 
 
 def asssociationRule(open_name, save_name, sheet_name, data_range, s, c, column=None):
-    # 从文件中读取数据
+    # load data
     data = pd.read_excel(os.path.dirname(__file__) + '/data/%s.xlsx' % open_name, sheet_name=sheet_name)
     data.head()
 
-    # 遍历矩阵，存储频繁项集
+    # generate frequent itemset
     i = 0
     itemset = []
 
@@ -111,10 +111,10 @@ def asssociationRule(open_name, save_name, sheet_name, data_range, s, c, column=
 
     while i < data.shape[0]:
         temp = []
-        # 套餐间的关联规则
+        # association rules between different plans
         if open_name == 'raw_data':
             for j in range(data['PackageNumber'][i]):
-                temp.extend([data['Package' + str(j+1)][i]])  # npArray类型转为list类型
+                temp.extend([data['Package' + str(j+1)][i]])  # npArray -> list
             itemset.append(temp)
         elif open_name == 'association_data':
             for j in range(len(column)):
@@ -127,19 +127,19 @@ def asssociationRule(open_name, save_name, sheet_name, data_range, s, c, column=
         i += 1
     # print(itemset)
 
-    # 转化为算法可接受的模型
+    # transfer the itemset to fit model
     TE = TransactionEncoder()
     set_transform = TE.fit_transform(itemset)
     set_df = pd.DataFrame(set_transform, columns=TE.columns_)
 
-    # 设置最小支持度，求频繁项集
+    # get frequent itemset
     frequent_itemset = apriori(set_df, min_support=s, use_colnames=True)
-    # 设置最小置信度，求关联规则
+    # get association rules
     rules = association_rules(frequent_itemset, metric='confidence',
                               min_threshold=c)
-    # 设置最小提升度
+    # set minimum lift
     rules = rules.drop(rules[rules.lift < 1.0].index)
-    # 并打印结果
+    # print
     rules = rules[['antecedents', 'consequents', 'support',
                    'confidence', 'lift']]
     rules.to_excel(os.path.dirname(__file__) + '/data/%s.xlsx' % save_name)
@@ -147,23 +147,23 @@ def asssociationRule(open_name, save_name, sheet_name, data_range, s, c, column=
 
 
 if __name__ == '__main__':
-    # 将用户和不同套餐的对应关系转换为itemset
+    # transform user data and plans into itemsets
     # dataTransform()
 
-    # 对itemset进行排序
+    # sort itemsets
     # setSort()
 
-    # 将连续数据离散化
+    # data discretization
     # dataDiscrete('H, K, M, O')
 
-    # 为变量重命名
+    # Rename variable
     # dataRename()
 
-    # 关联规则分析
+    # index for ASM
     columnIndex = ['Package', 'RegisterTeam']
 
-    # 全部用户
+    # whole users
     asssociationRule('association_data', 'LASM_r', 'Sheet1', 'Low', 0.01, 0.5, columnIndex)
 
-    # 高星级用户
+    # high-level users
     # asssociationRule('level_data', 'LASM_pAndRevenue', 'LowLevel', 0.01, 0.2, columnIndex)

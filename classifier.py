@@ -8,12 +8,12 @@ from sklearn.metrics import accuracy_score
 from sklearn import metrics
 import time
 import decimal
-from sklearn.base import is_classifier # 用于判断是回归树还是分类树
-from dtreeviz.colors import adjust_colors # 用于分类树颜色（色盲友好模式）
-import seaborn as sns #用于回归树颜色
-from matplotlib.colors import Normalize # 用于标准化RGB数值
+from sklearn.base import is_classifier # determine the desition tree is used for classfication / regression
+from dtreeviz.colors import adjust_colors # determine color of decision tree
+import seaborn as sns # determine color of decision tree
+from matplotlib.colors import Normalize # RGB normalization
 import matplotlib.cm as cm
-os.environ["PATH"] += os.pathsep + 'C:\\Program Files\\Graphviz\\bin'  # 设定Graphviz环境
+os.environ["PATH"] += os.pathsep + 'C:\\Program Files\\Graphviz\\bin'  # Graphviz
 
 
 UsageColumn = ['TotalFlow', '4GDuration', '4GFlow', 'TotalCallDuration', 'CallingDuration', 'TotalRevenue',
@@ -25,14 +25,14 @@ features = ['IfUnlimited', 'IfCoalesce', 'IfContract', 'IfSMSSilence', 'TotalFlo
 
 
 def clusterAnalyze(cluster_name):
-    # 从文件中读取数据
+    # load data
     global result
     global columns
     data = pd.read_excel(os.path.dirname(__file__) + '/data/classify_data.xlsx', sheet_name='Sheet3')
     data.head()
 
     num = 0
-    # 读取对应列并创建结果DF
+    # create dataframe
     if cluster_name == 'Usage':
         UsageColumn.append(cluster_name)
         columns = UsageColumn
@@ -45,7 +45,7 @@ def clusterAnalyze(cluster_name):
     data = data[columns]
     result = pd.DataFrame(columns=columns)
 
-    # 计算每个聚类每一列的均值
+    # mean value for each cluster
     for i in range(num):
         temp = data.where(data[cluster_name] == i)
         means = []
@@ -53,26 +53,26 @@ def clusterAnalyze(cluster_name):
             means.append(temp[col].mean())
         result.loc[i] = means
 
-    # 保留两位小数
+    # set precision
     result.round(2)
     result.to_excel(os.path.dirname(__file__) + '/data/Mean%s.xlsx' % cluster_name)
     print(result)
 
 
 def dataClassify():
-    # Sheet6 -> 用于聚类的数据
+    # Sheet6 -> cluster datas
     data = pd.read_excel(os.path.dirname(__file__) + '/data/classify_data.xlsx', sheet_name='Sheet6')
     data.head()
 
-    data_X = data[features]  # 属性值
-    data_Y = data['Clusters']  # 标签
+    data_X = data[features]  # attributes
+    data_Y = data['Clusters']  # labels
 
     m, n = data_X.shape
 
     score = []
     run_time = []
 
-    # KNN、NB、SVM、RF、DT, LR六种分类器
+    # Classifiers: KNN、NB、SVM、RF、DT, LR
     KNN = neighbors.KNeighborsClassifier(n_neighbors=5, weights="distance")
     NB = naive_bayes.GaussianNB()
     SVM = svm.SVC()
@@ -80,10 +80,10 @@ def dataClassify():
     DR = tree.DecisionTreeClassifier(criterion='entropy')
     LR = linear_model.LogisticRegression()
 
-    # 分出训练集和测试集
+    # split data into training and test set
     X_train, X_test, Y_train, Y_test = model_selection.train_test_split(data_X, data_Y, train_size=0.7, random_state=0)
 
-    # KNN分类
+    # KNN
     start = time.time()
     KNN.fit(X_train, Y_train)
     Y_predict = KNN.predict(X_test)
@@ -91,7 +91,7 @@ def dataClassify():
     score.append(accuracy_score(Y_test, Y_predict))
     run_time.append(end-start)
 
-    # NaiveBayes分类
+    # Naive Bayes
     start = time.time()
     NB.fit(X_train, Y_train)
     Y_predict = NB.predict(X_test)
@@ -99,7 +99,7 @@ def dataClassify():
     score.append(accuracy_score(Y_test, Y_predict))
     run_time.append(end - start)
 
-    # SVM分类
+    # SVM
     start = time.time()
     SVM.fit(X_train, Y_train)
     Y_predict = SVM.predict(X_test)
@@ -107,7 +107,7 @@ def dataClassify():
     score.append(accuracy_score(Y_test, Y_predict))
     run_time.append(end - start)
 
-    # 随机森林分类
+    # Random Forest
     start = time.time()
     RF.fit(X_train, Y_train)
     Y_predict = RF.predict(X_test)
@@ -115,7 +115,7 @@ def dataClassify():
     score.append(accuracy_score(Y_test, Y_predict))
     run_time.append(end - start)
 
-    # 决策树分类
+    # Decision Tree
     start = time.time()
     DR.fit(X_train, Y_train)
     Y_predict = DR.predict(X_test)
@@ -123,7 +123,7 @@ def dataClassify():
     score.append(accuracy_score(Y_test, Y_predict))
     run_time.append(end - start)
 
-    # 逻辑回归分类
+    # Logistic Regression
     start = time.time()
     LR.fit(X_train, Y_train)
     Y_predict = LR.predict(X_test)
@@ -132,7 +132,7 @@ def dataClassify():
     run_time.append(end - start)
     """
 
-    # 确定K值
+    # Determine K-value for KNN
     i = 3
     score = []
     while i < 10:
@@ -153,7 +153,7 @@ def dataClassify():
     plt.show()
     """
 
-    # 生成图像
+    # comparison between classifiers
     plot_x = ['KNN', 'NB', 'SVM', 'RF', 'DR', 'LR']
     fig = plt.figure()
     ax1 = fig.add_subplot(2, 1, 1)
@@ -178,7 +178,7 @@ def get_yvec_xmat_vnames(target, df):
 
     yvec = df[target]
 
-    # 将拥有n个不同数值的变量转换为n个0/1的变量，变量名字中有"_isDummy_"作为标注
+    # Dummy encoding
     xmat = pd.get_dummies(df.loc[:, df.columns != target], prefix_sep = "_isDummy_")
 
     vnames = xmat.columns
@@ -187,7 +187,7 @@ def get_yvec_xmat_vnames(target, df):
 
 
 if __name__ == '__main__':
-    # 分析聚类数据，得到聚类表示意义
+    # Clustering results analysis
     # clusterAnalyze('Usage')
 
     # dataClassify()
